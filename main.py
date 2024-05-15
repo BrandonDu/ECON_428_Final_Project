@@ -256,6 +256,7 @@ if BestF > 0:
 else:
     plt.plot(HisBestF, 'r', linewidth=2)
 
+
 plt.xlabel('Iterations')
 plt.ylabel('Fitness')
 plt.title(f'F{FunIndex}')
