@@ -218,7 +218,7 @@ def ARO(F_index, MaxIt, nPop):
                 newPopPos = PopPos[RandInd, :] + R * (PopPos[i, :] - PopPos[RandInd, :]) \
                             + np.round(0.5 * (0.05 + np.random.rand())) * np.random.randn(Dim)
             else:
-                Direct2[i, np.ceil(np.random.rand() * Dim).astype(int)] = 1
+                Direct2[i, np.floor(np.random.rand() * Dim).astype(int)] = 1
                 gr = Direct2[i, :]
                 H = ((MaxIt - It + 1) / MaxIt) * np.random.randn()
                 b = PopPos[i, :] + H * gr * PopPos[i, :]
