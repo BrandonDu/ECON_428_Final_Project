@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from LSTM import evaluate_lstm_models
 
 def fun_range(fun_index):
     dim = 30
@@ -57,6 +58,13 @@ def fun_range(fun_index):
     elif fun_index == 22:
         low, up = 0, 10
         dim = 4
+    elif fun_index == 23: # bounds and dim for lstm hyperparameters
+        bounds = [(10, 100),  # LSTM units
+                  (0.1, 0.5),  # Dropout rate
+                  (0.001, 0.01)]  # Learning rate (assuming optimizer uses it)
+        low, up = np.array([b[0] for b in bounds]), np.array([b[1] for b in bounds])
+        dim = len(bounds)
+
     else:
         low, up = 0, 10
         dim = 4
@@ -162,6 +170,8 @@ def ben_functions(X, FunIndex, Dim):
         for i in range(7):
             Fit -= 1 / (np.dot((X - a[i, :]), (X - a[i, :]).T) + c[i])
         return Fit
+    elif FunIndex == 23: # LSTM model performance case
+        return evaluate_lstm_model(X)
     else:  # Shekel 10
         a = np.array([[4, 4, 4, 4], [1, 1, 1, 1], [8, 8, 8, 8], [6, 6, 6, 6], [3, 7, 3, 7], [2, 9, 2, 9],
                       [5, 5, 3, 3], [8, 1, 8, 1], [6, 2, 6, 2], [7, 3.6, 7, 3.6]])
@@ -177,7 +187,7 @@ def ARO(F_index, MaxIt, nPop):
     Low, Up, Dim = fun_range(F_index)
 
     # Initialize population
-    PopPos = np.random.rand(nPop, Dim) * (Up - Low) + Low
+    PopPos = np.random.rand(nPop, Dim) * (Up - Low) + Low # nPop number of vectors of dimension "Dim" with lower and upper bounds defined
     PopFit = np.zeros(nPop)
 
     # Evaluate initial population
@@ -242,19 +252,21 @@ def ARO(F_index, MaxIt, nPop):
     return BestX, BestF, HisBestF
 
 
-MaxIteration = 1000
-PopSize = 50
-FunIndex = 1
+MaxIteration = 50
+PopSize = 10
+FunIndex = 23
 
-BestX, BestF, HisBestF = ARO(FunIndex, MaxIteration, PopSize)
+# BestX, BestF, HisBestF = ARO(FunIndex, MaxIteration, PopSize)
+best_hyperparams, best_error, history = ARO(F_index=23, MaxIt=50, nPop=10)
 
-print(f'The best fitness of F{FunIndex} is: {BestF}')
+
+print(f'The best fitness of F{FunIndex} is: {best_error}')
 
 plt.figure()
-if BestF > 0:
-    plt.semilogy(HisBestF, 'r', linewidth=2)
+if best_error > 0:
+    plt.semilogy(history, 'r', linewidth=2)
 else:
-    plt.plot(HisBestF, 'r', linewidth=2)
+    plt.plot(history, 'r', linewidth=2)
 
 
 plt.xlabel('Iterations')

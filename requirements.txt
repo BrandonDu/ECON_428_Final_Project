@@ -1,0 +1,11 @@
+pandas
+pandas_datareader
+tensorflow
+yfinance
+openai
+httpx
+requests
+beautifulsoup4
+selenium
+webdriver-manager
+numpy
