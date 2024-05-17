@@ -29,11 +29,22 @@ print(stock_data)
 stock_data = stock_data["SPOT"]
 print(stock_data.head())
 
+# Calculate percentage change
+percent_change = stock_data["Open"].pct_change().dropna()
+print(percent_change)
+
+# Label the data
+labels = percent_change.apply(label_buckets)
+print(labels)
+
 scaler = MinMaxScaler(feature_range=(0, 1))
-scaled_data = scaler.fit_transform(stock_data["Open"].values.reshape(-1, 1))
+# scaled_data = scaler.fit_transform(stock_data["Open"].values.reshape(-1, 1)) # Regression
+scaled_data = scaler.fit_transform(stock_data["Open"].values[1:].reshape(-1,1))  # Skip the first row because pct_change().dropna() removes it
+
 
 sequence_length = 60
-X, y = create_sequences(scaled_data, sequence_length)
+# X, y = create_sequences(scaled_data, sequence_length) # Regression
+X, y = create_sequences(scaled_data, sequence_length, labels=labels) # Classification
 X = X.reshape((X.shape[0], X.shape[1], len(sp500_stocks)))
 print(X.shape)
 
@@ -44,7 +55,7 @@ training_data = (X_train, y_train)
 test_data = (X_test, y_test)
 data = (training_data, test_data)
 
-"""
+
 # ARO Optimizer
 MaxIteration = 1
 PopSize = 2
@@ -93,65 +104,69 @@ scaled_test_data = scaled_test_data.reshape((scaled_test_data.shape[1], scaled_t
 print(scaled_test_data.shape)
 
 predictions = best_model.predict(scaled_test_data)  # predict on the normalized data
-predicted_prices = scaler.inverse_transform(predictions)
-predicted_price = predicted_prices[-1][0]
-print(predicted_prices)
 
-if predicted_price > test_stock_data['Open'].iloc[-1]:
-    print("Long")
-else:
-    print("Short")
-"""
+# # Regression
+# predicted_prices = scaler.inverse_transform(predictions)
+# predicted_price = predicted_prices[-1][0]
+# print(predicted_prices)
+#
+# if predicted_price > test_stock_data['Open'].iloc[-1]:
+#     print("Long")
+# else:
+#     print("Short")
 
-# GA Optimizer
-hyperparameter_space = {
-    # "num_layers": [1, 2, 3],
-    "units": [10, 30, 50, 70, 100],
-    "learning_rate": [0.001, 0.01, 0.1],
-    "batch_size": [32, 64, 128],
-    "dropout": [0.1, 0.2, 0.3, 0.4, 0.5],
-    "optimizer": [Adam, RMSprop],
-    "epochs": [10, 20, 30],
-}
+# Classification
+print(predictions)
 
-pop_size = 5
-num_generations = 5
-num_parents = 2
-crossover_rate = 0.7
-mutation_rate = 0.1
-
-lp = LineProfiler()
-lp.add_function(fitness_function)
-lp.add_function(build_lstm_model)
-lp.add_function(selection)
-lp.add_function(crossover)
-lp.add_function(mutation)
-lp.add_function(replacement)
-lp_wrapper = lp(genetic_algorithm)
-best_hyperparameters, best_fitness = lp_wrapper(
-        hyperparameter_space,
-        X_train,
-        y_train,
-        X_test,
-        y_test,
-        pop_size,
-        num_generations,
-        num_parents,
-        crossover_rate,
-        mutation_rate,
-)
-# best_hyperparameters, best_fitness = genetic_algorithm(hyperparameter_space, X_train, y_train, X_test, y_test, pop_size=pop_size, num_generations=num_generations, num_parents=num_parents, crossover_rate=crossover_rate, mutation_rate=mutation_rate)
-# print(f'Best Hyperparameters: {best_hyperparameters}')
-
-lp.print_stats()
-
-
-0-50
-50-100
-100-150
-150-200
-200-250
-
-[0,0,0,0,1]
-[0,1,0,0,0]
-
+# # GA Optimizer
+# hyperparameter_space = {
+#     # "num_layers": [1, 2, 3],
+#     "units": [10, 30, 50, 70, 100],
+#     "learning_rate": [0.001, 0.01, 0.1],
+#     "batch_size": [32, 64, 128],
+#     "dropout": [0.1, 0.2, 0.3, 0.4, 0.5],
+#     "optimizer": [Adam, RMSprop],
+#     "epochs": [10, 20, 30],
+# }
+#
+# pop_size = 5
+# num_generations = 5
+# num_parents = 2
+# crossover_rate = 0.7
+# mutation_rate = 0.1
+#
+# lp = LineProfiler()
+# lp.add_function(fitness_function)
+# lp.add_function(build_lstm_model)
+# lp.add_function(selection)
+# lp.add_function(crossover)
+# lp.add_function(mutation)
+# lp.add_function(replacement)
+# lp_wrapper = lp(genetic_algorithm)
+# best_hyperparameters, best_fitness = lp_wrapper(
+#         hyperparameter_space,
+#         X_train,
+#         y_train,
+#         X_test,
+#         y_test,
+#         pop_size,
+#         num_generations,
+#         num_parents,
+#         crossover_rate,
+#         mutation_rate,
+# )
+# # best_hyperparameters, best_fitness = genetic_algorithm(hyperparameter_space, X_train, y_train, X_test, y_test, pop_size=pop_size, num_generations=num_generations, num_parents=num_parents, crossover_rate=crossover_rate, mutation_rate=mutation_rate)
+# # print(f'Best Hyperparameters: {best_hyperparameters}')
+#
+# lp.print_stats()
+#
+#
+# 0-50
+# 50-100
+# 100-150
+# 150-200
+# 200-250
+#
+# [0,0,0,0,1]
+# [0,1,0,0,0]
+#

@@ -20,6 +20,7 @@ class ARO:
         pop_fit = np.zeros(self.n_pop)
 
         for i in range(self.n_pop):
+            print("Evaluating initial population")
             pop_fit[i], model = evaluate_hyperparams(pop_pos[i, :], data)
             if pop_fit[i] <= best_f:
                 best_f = pop_fit[i]

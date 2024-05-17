@@ -28,8 +28,7 @@ model.fit(X_train, y_train, epochs=10, batch_size=32)
 X_test = np.random.rand(1, 10, 1)  # Single test sequence
 predictions = model.predict(X_test)
 
-# The result will be a probability distribution across the 3 classes
-print("Predicted probabilities:", predictions)
+
 
 ### Binary
 

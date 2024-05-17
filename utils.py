@@ -2,6 +2,7 @@ import keras
 import matplotlib.pyplot as plt
 import numpy as np
 from tensorflow.keras.layers import LSTM, Dense, Dropout, Input
+from tensorflow.keras.utils import to_categorical
 
 
 def fun_range(fun_index):
@@ -186,12 +187,26 @@ def ben_functions(X, FunIndex, Dim):
             Fit -= 1 / (np.dot((X - a[i, :]), (X - a[i, :]).T) + c[i])
         return Fit
 
+def label_buckets(change):
+    if change < -0.05:
+        return 0  # <-5%
+    elif change < -0.025:
+        return 1  # -5% to -2.5%
+    elif change < 0:
+        return 2  # -2.5% to 0%
+    elif change < 0.025:
+        return 3  # 0% to 2.5%
+    elif change < 0.05:
+        return 4  # 2.5% to 5%
+    else:
+        return 5  # >5%
 
-def create_sequences(data, sequence_length):
+def create_sequences(data, sequence_length, labels=None):
     xs, ys = [], []
     for i in range(len(data) - sequence_length - 1):
         x = data[i:(i + sequence_length)]
-        y = data[i + sequence_length]
+        # y = data[i + sequence_length] # Regression
+        y = labels.iloc[i + sequence_length] # Classification
         xs.append(x)
         ys.append(y)
     return np.array(xs), np.array(ys)
@@ -214,6 +229,13 @@ def evaluate_hyperparams(hyperparams, data, epochs=25, batch_size=32, show_graph
 
     x_train, y_train = data[0]
     x_test, y_test = data[1]
+    y_train = y_train.flatten()
+    print(f"y_train.shape = {y_train.shape}")
+    y_test = y_test.flatten()
+    y_train_cat = to_categorical(y_train) # Classification
+    y_test_cat = to_categorical(y_test) # Classification
+
+    num_classes = y_train_cat.shape[1]
 
     model = keras.Sequential([
         Input(shape=(x_train.shape[1], 1)),
@@ -221,21 +243,27 @@ def evaluate_hyperparams(hyperparams, data, epochs=25, batch_size=32, show_graph
         Dropout(dropout_rate),
         LSTM(units=n_units, return_sequences=False),
         Dropout(dropout_rate),
-        Dense(units=1)
+        # Dense(units=1) # Regression
+        Dense(units=num_classes, activation="softmax")
     ])
 
     optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
 
-    model.compile(optimizer=optimizer, loss='mean_squared_error')
+    # model.compile(optimizer=optimizer, loss='mean_squared_error') # Regression
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy']) # Classification
 
-    model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size)
+    # model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size) # Regression
+    model.fit(x_train, y_train_cat, epochs=epochs, batch_size=batch_size) # Classification
 
     y_pred = model.predict(x_test)
-    mse = mean_squared_error(y_test, y_pred)
+    # mse = mean_squared_error(y_test, y_pred) # Regression
+
+    loss, accuracy = model.evaluate(x_test, y_test_cat)
 
     if show_graph:
         visualize_data(y_test, y_pred)
-    return mse, model
+    # return mse, model
+    return loss, model
 
 
 def visualize_data(y_test, y_pred):
