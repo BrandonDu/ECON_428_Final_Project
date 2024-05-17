@@ -4,6 +4,7 @@ import yfinance as yf
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from utils import *
+from GA import *
 
 sp500_stocks = ['SPOT']
 print(sp500_stocks)
@@ -39,7 +40,8 @@ training_data = (X_train, y_train)
 test_data = (X_test, y_test)
 data = (training_data, test_data)
 
-
+'''
+# ARO Optimizer
 MaxIteration = 1
 PopSize = 2
 FunIndex = 23
@@ -95,4 +97,19 @@ if predicted_price > test_stock_data['Open'].iloc[-1]:
     print("Long")
 else:
     print("Short")
+'''
+
+# GA Optimizer
+hyperparameter_space = {
+    'num_layers': [1, 2, 3],
+    'units': [10, 30, 50, 70, 100],
+    'learning_rate': [0.001, 0.01, 0.1],
+    'batch_size': [32, 64, 128],
+    'dropout': [0.1, 0.2, 0.3, 0.4, 0.5],
+    'optimizer': [Adam, RMSprop],
+    'epochs': [10, 20, 30]
+}
+
+best_hyperparameters = genetic_algorithm(hyperparameter_space, X_train, y_train, X_test, y_test, pop_size=20, num_generations=10, num_parents=10, crossover_rate=0.7, mutation_rate=0.1)
+print(f'Best Hyperparameters: {best_hyperparameters}')
 
