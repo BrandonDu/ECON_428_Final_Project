@@ -1,9 +1,12 @@
+import math
+import yfinance as yf
 import keras
 import matplotlib.pyplot as plt
 import numpy as np
 from tensorflow.keras.layers import LSTM, Dense, Dropout, Input
 from tensorflow.keras.utils import to_categorical
-
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
 
 def fun_range(fun_index):
     dim = 30
@@ -187,26 +190,18 @@ def ben_functions(X, FunIndex, Dim):
             Fit -= 1 / (np.dot((X - a[i, :]), (X - a[i, :]).T) + c[i])
         return Fit
 
+
 def label_buckets(change):
-    if change < -0.05:
-        return 0  # <-5%
-    elif change < -0.025:
-        return 1  # -5% to -2.5%
-    elif change < 0:
-        return 2  # -2.5% to 0%
-    elif change < 0.025:
-        return 3  # 0% to 2.5%
-    elif change < 0.05:
-        return 4  # 2.5% to 5%
-    else:
-        return 5  # >5%
+    return math.floor(max(min(change, 0.09999), -0.1) / 0.025) + 4
 
 def create_sequences(data, sequence_length, labels=None):
     xs, ys = [], []
-    for i in range(len(data) - sequence_length - 1):
+    for i in range(len(data) - sequence_length):
         x = data[i:(i + sequence_length)]
-        # y = data[i + sequence_length] # Regression
-        y = labels.iloc[i + sequence_length] # Classification
+        if labels is None:
+            y = data[i + sequence_length] # Regression
+        else:
+            y = labels.iloc[i + sequence_length] # Classification
         xs.append(x)
         ys.append(y)
     return np.array(xs), np.array(ys)
@@ -224,18 +219,22 @@ def mean_squared_error(actual, predicted):
     return mean_squared_error
 
 
-def evaluate_hyperparams(hyperparams, data, epochs=25, batch_size=32, show_graph=False):
-    n_units, dropout_rate, learning_rate = int(hyperparams[0]), hyperparams[1], hyperparams[2]
-
+def evaluate_hyperparams(hyperparams, data, epochs=25, batch_size=32, show_graph=False, classification=False):
+    if isinstance(hyperparams, dict):
+        n_units, dropout_rate, learning_rate = hyperparams["units"], hyperparams["dropout"], hyperparams["learning_rate"]
+    else: n_units, dropout_rate, learning_rate = int(hyperparams[0]), hyperparams[1], hyperparams[2]
+    num_classes = 1
     x_train, y_train = data[0]
     x_test, y_test = data[1]
-    y_train = y_train.flatten()
-    print(f"y_train.shape = {y_train.shape}")
-    y_test = y_test.flatten()
-    y_train_cat = to_categorical(y_train) # Classification
-    y_test_cat = to_categorical(y_test) # Classification
+    if classification:
+        # print("classification = True")
+        y_train = y_train.flatten()
+        # print(f"y_train.shape = {y_train.shape}")
+        y_test = y_test.flatten()
+        y_train = to_categorical(y_train) # make into one-hot vectors
+        y_test = to_categorical(y_test)
+        num_classes = y_train.shape[1]
 
-    num_classes = y_train_cat.shape[1]
 
     model = keras.Sequential([
         Input(shape=(x_train.shape[1], 1)),
@@ -244,34 +243,77 @@ def evaluate_hyperparams(hyperparams, data, epochs=25, batch_size=32, show_graph
         LSTM(units=n_units, return_sequences=False),
         Dropout(dropout_rate),
         # Dense(units=1) # Regression
-        Dense(units=num_classes, activation="softmax")
+        # Dense(units=num_classes, activation="softmax") # Classification
     ])
+
+    if classification:
+        model.add(Dense(units=num_classes, activation='softmax'))
+        loss = 'categorical_crossentropy'
+        metrics = ['accuracy']
+    else:
+        model.add(Dense(units=1))
+        loss = 'mean_squared_error'
+        metrics = ['mse']
 
     optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
 
-    # model.compile(optimizer=optimizer, loss='mean_squared_error') # Regression
-    model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy']) # Classification
+    model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
-    # model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size) # Regression
-    model.fit(x_train, y_train_cat, epochs=epochs, batch_size=batch_size) # Classification
+    model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size) # Classification
 
     y_pred = model.predict(x_test)
-    # mse = mean_squared_error(y_test, y_pred) # Regression
-
-    loss, accuracy = model.evaluate(x_test, y_test_cat)
+    if classification: loss, accuracy = model.evaluate(x_test, y_test)
+    else: mse = mean_squared_error(y_test, y_pred) # Regression
 
     if show_graph:
         visualize_data(y_test, y_pred)
-    # return mse, model
-    return loss, model
+    if classification: return loss, model
+    return mse, model
 
 
-def visualize_data(y_test, y_pred):
+def visualize_data(y_test, y_pred, stock_name="S&P500"):
     plt.figure(figsize=(10, 6))
-    plt.plot(y_test, color='blue', label='Actual S&P 500 Opening Price')
-    plt.plot(y_pred, color='red', label='Predicted S&P 500 Opening Price')
-    plt.title('S&P 500 Stock Price Prediction')
+    plt.plot(y_test, color='blue', label=f'Actual {stock_name} Opening Price')
+    plt.plot(y_pred, color='red', label=f'Predicted {stock_name} Opening Price')
+    plt.title(f'{stock_name} Stock Price Prediction')
     plt.xlabel('Time (days)')
-    plt.ylabel('S&P 500 Opening Price')
+    plt.ylabel(f'{stock_name} Opening Price')
     plt.legend()
     plt.show()
+
+def fetch_latest_data(tickers, start_date, end_date):
+    stock_data = {}
+    for ticker in tickers:
+        try:
+            symbol_yf = ticker.replace(".", "-")
+            stock_data[ticker] = yf.download(symbol_yf, start=start_date, end=end_date)
+        except Exception as e:
+            print(f"Failed to fetch data for {ticker}: {e}")
+    print("Stock data fetched.")
+    return stock_data
+
+def train_model(stock, optimizer, classification):
+    scaler = MinMaxScaler(feature_range=(0, 1))
+
+    if classification:
+        percent_change = stock["Open"].pct_change().dropna()
+        labels = percent_change.apply(label_buckets)
+        scaled_data = scaler.fit_transform(stock["Open"].values[1:].reshape(-1, 1))
+    else:
+        labels = None
+        scaled_data = scaler.fit_transform(stock["Open"].values.reshape(-1, 1))
+
+    sequence_length = 60
+    X, y = create_sequences(scaled_data, sequence_length, labels=labels)
+    X = X.reshape((X.shape[0], X.shape[1], 1))
+    # print(X.shape)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, shuffle=False
+    )
+
+    training_data = (X_train, y_train)
+    test_data = (X_test, y_test)
+    data = (training_data, test_data)
+
+    return optimizer(data, classification=classification)

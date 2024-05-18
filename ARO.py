@@ -11,6 +11,7 @@ class ARO:
         self.low, self.up, self.dim = fun_range(f_index)
 
     def __call__(self, data, *args, **kwargs):
+        print("Initiating ARO Optimizer")
         best_f = float('inf')
         best_x = None
         best_model = None
@@ -19,9 +20,11 @@ class ARO:
         pop_pos = np.random.rand(self.n_pop, self.dim) * (self.up - self.low) + self.low
         pop_fit = np.zeros(self.n_pop)
 
+        classification = kwargs.get('classification', False)  # Default to False if not provided
+
         for i in range(self.n_pop):
             print("Evaluating initial population")
-            pop_fit[i], model = evaluate_hyperparams(pop_pos[i, :], data)
+            pop_fit[i], model = evaluate_hyperparams(pop_pos[i, :], data, classification=classification)
             if pop_fit[i] <= best_f:
                 best_f = pop_fit[i]
                 best_x = pop_pos[i, :]
@@ -57,7 +60,7 @@ class ARO:
 
                 new_pop_pos = space_bound(new_pop_pos, self.up, self.low)
                 new_pop_pos = new_pop_pos.ravel()
-                new_pop_fit, new_model = evaluate_hyperparams(new_pop_pos, data)
+                new_pop_fit, new_model = evaluate_hyperparams(new_pop_pos, data, classification=classification)
 
                 if new_pop_fit < pop_fit[i]:
                     pop_fit[i] = new_pop_fit
@@ -69,4 +72,3 @@ class ARO:
             his_best_f[it] = best_f
 
         return best_x, best_model, best_f, his_best_f
-    
