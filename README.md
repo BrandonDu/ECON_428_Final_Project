@@ -1,4 +1,4 @@
-### Evaluating Hyperparameter Optimization Strategies for LSTM Networks in Algorithmic Trading
+# Evaluating Hyperparameter Optimization Strategies for LSTM Networks in Algorithmic Trading
 ## Getting Started 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. For our implementation, we consider optimizing a 2-layer LSTM to predict stock prices
 of two types: regression and classification. The regression model predicts the expected price of the next day given the past days, and the classification
