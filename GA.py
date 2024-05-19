@@ -31,6 +31,7 @@ class GA:
         parents = random.choices(population, weights=fitnesses, k=self.num_parents)
         return parents
 
+    # Perform crossover to generate offspring
     def crossover(self, parents):
         offspring = []
         for i in range(0, len(parents), 2):

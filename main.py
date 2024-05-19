@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-
+from tensorflow.keras import backend as K
 from ARO import ARO
 from GA import *
 import tensorflow as tf
@@ -74,6 +74,7 @@ def evaluate_optimizer(hyperparams_optimizer, optimizer_parameters, stock_data_t
             predictions[ticker] = predictions_inversed.ravel() # append the inversed predictions to the dictionary
             visualize_data(actual[ticker], predictions_inversed, hyperparams_optimizer, stock_name=ticker)
         num_backtest_days = len(stock_data_test[ticker]["Open"])
+        K.clear_session() # Clear all the models generated from evaluating the optimizer to save memory
 
 
     # Backtesting
@@ -106,7 +107,7 @@ def evaluate_optimizer(hyperparams_optimizer, optimizer_parameters, stock_data_t
             investments[ticker] = expected_change * initial_capital / curr_prices[ticker]
             investment_total += np.abs(investments[ticker]) # We may short
 
-        multiplier = 0.8 * cash / investment_total
+        multiplier = 0.5 * cash / investment_total
         for ticker, amount in investments.items():
             amount = math.floor(amount * multiplier)
             if amount > 0: # Long
@@ -157,14 +158,14 @@ end_date = datetime.now()
 start_date = end_date - timedelta(days=365)
 stock_data_test = fetch_latest_data(stock_list, start_date, end_date)
 
-# ARO parameters
-ARO_parameters = {
-    "max_iteration": 10,
-    "pop_size": 4,
-    "bounds": [(10, 100),  # LSTM units
-              (0.1, 0.5),  # Dropout rate
-              (0.001, 0.01)]  # Learning rate (assuming optimizer uses it)
-}
+# # ARO parameters
+# ARO_parameters = {
+#     "max_iteration": 10,
+#     "pop_size": 4,
+#     "bounds": [(10, 100),  # LSTM units
+#               (0.1, 0.5),  # Dropout rate
+#               (0.001, 0.01)]  # Learning rate (assuming optimizer uses it)
+# }
 
 # GA parameters
 GA_parameters = {
@@ -179,19 +180,19 @@ GA_parameters = {
     "crossover_rate": 0.7,
     "mutation_rate": 0.1,
 }
-
-# Classification based strategy
+#
+# # Classification based strategy
 classification = True
-classification_ARO_evaluation, classification_ARO_losses, classification_ARO_total_time, classification_ARO_times_per_stock = evaluate_optimizer("ARO", ARO_parameters, stock_data_train, stock_data_test, classification)
-write_results_to_file("classification_ARO_results.txt", classification_ARO_evaluation, classification_ARO_losses, classification_ARO_total_time, classification_ARO_times_per_stock)
-data = {
-    'Evaluation': pd.Series(classification_ARO_evaluation),
-    'Best Losses': pd.Series(classification_ARO_losses),
-    'Total Time': pd.Series(classification_ARO_total_time),
-    'Times_per_stock': pd.Series(classification_ARO_times_per_stock)
-}
-df = pd.DataFrame(data)
-df.to_csv('classification_ARO_results.csv', index=False)
+# classification_ARO_evaluation, classification_ARO_losses, classification_ARO_total_time, classification_ARO_times_per_stock = evaluate_optimizer("ARO", ARO_parameters, stock_data_train, stock_data_test, classification)
+# write_results_to_file("classification_ARO_results.txt", classification_ARO_evaluation, classification_ARO_losses, classification_ARO_total_time, classification_ARO_times_per_stock)
+# data = {
+#     'Evaluation': pd.Series(classification_ARO_evaluation),
+#     'Best Losses': pd.Series(classification_ARO_losses),
+#     'Total Time': pd.Series(classification_ARO_total_time),
+#     'Times_per_stock': pd.Series(classification_ARO_times_per_stock)
+# }
+# df = pd.DataFrame(data)
+# df.to_csv('classification_ARO_results.csv', index=False)
 
 classification_GA_evaluation, classification_GA_losses, classification_GA_total_time, classification_GA_times_per_stock = evaluate_optimizer("GA", GA_parameters, stock_data_train, stock_data_test, classification)
 write_results_to_file("classification_GA_results.txt", classification_GA_evaluation, classification_GA_losses, classification_GA_total_time, classification_GA_times_per_stock)
@@ -208,103 +209,100 @@ df.to_csv('classification_GA_results.csv', index=False)
 # print(classification_ARO_evaluation)
 # print(classification_GA_evaluation)
 # Plot the results
-plt.figure(constrained_layout=True)
-plt.plot(classification_ARO_evaluation, label='ARO')
-plt.plot(classification_GA_evaluation, label='GA')
-plt.xlabel('Time in Days')
-plt.ylabel('Portfolio Value')
-plt.title('Portfolio Value Over Time')
-plt.legend()
-plt.show()
-plt.savefig(f"Images/ARO vs GA Classification.png")
-
-
+# plt.figure(constrained_layout=True)
+# plt.plot(classification_ARO_evaluation, label='ARO')
+# plt.plot(classification_GA_evaluation, label='GA')
+# plt.xlabel('Time in Days')
+# plt.ylabel('Portfolio Value')
+# plt.title('Portfolio Value Over Time')
+# plt.legend()
+# plt.savefig(f"Images/ARO vs GA Classification.png")
 
 
 # Table for the best losses for each stock and each optimizer
-data = {
-    "Ticker": stock_list,
-    "LSTM-ARO": classification_ARO_losses,
-    "LSTM-GA": classification_GA_losses,
-}
-
-df = pd.DataFrame(data)
-fig, ax = plt.subplots(figsize=(12, 8))  # set size frame
-
-# hide axes
-ax.xaxis.set_visible(False)
-ax.yaxis.set_visible(False)
-ax.set_frame_on(False)
-
-# Create a table
-table = ax.table(cellText=df.values, colLabels=df.columns, cellLoc='center', loc='center')
-
-table.auto_set_font_size(False)
-table.set_fontsize(10)
-table.scale(1.2, 1.2)  # scale the table
-
-plt.show()
-
-fig.savefig("table.png")
-
-### Regression based strategy
-classification = False
-regression_ARO_evaluation, regression_ARO_losses, regression_ARO_total_time, regression_ARO_times_per_stock = evaluate_optimizer("ARO", ARO_parameters, stock_data_train, stock_data_test, classification)
-data = {
-    'Evaluation': pd.Series(regression_ARO_evaluation),
-    'Best Losses': pd.Series(regression_ARO_losses),
-    'Total Time': pd.Series(regression_ARO_total_time),
-    'Times_per_stock': pd.Series(regression_ARO_times_per_stock)
-}
-df = pd.DataFrame(data)
-df.to_csv('regression_ARO_results.csv', index=False)
-
-regression_GA_evaluation, regression_GA_losses, regression_GA_total_time, regression_GA_times_per_stock = evaluate_optimizer("GA", GA_parameters, stock_data_train, stock_data_test, classification)
-data = {
-    'Evaluation': pd.Series(regression_GA_evaluation),
-    'Best Losses': pd.Series(regression_GA_losses),
-    'Total Time': pd.Series(regression_GA_total_time),
-    'Times_per_stock': pd.Series(regression_GA_times_per_stock)
-}
-df = pd.DataFrame(data)
-df.to_csv('regression_GA_results.csv', index=False)
-
-# write_results_to_file("regression_ARO_results.txt", regression_ARO_evaluation, regression_ARO_losses, regression_ARO_total_time, regression_ARO_times_per_stock)
-# write_results_to_file("regression_GA_results.txt", regression_GA_evaluation, regression_GA_losses, regression_GA_total_time, regression_GA_times_per_stock)
+# data = {
+#     "Ticker": stock_list,
+#     "LSTM-ARO": classification_ARO_losses,
+#     "LSTM-GA": classification_GA_losses,
+# }
 #
-# print(regression_ARO_evaluation)
-# print(regression_GA_evaluation)
-# Plot the results
-plt.figure(constrained_layout=True)
-plt.plot(regression_ARO_evaluation, label='ARO')
-plt.plot(regression_GA_evaluation, label='GA')
-plt.xlabel('Time in Days')
-plt.ylabel('Portfolio Value')
-plt.title('Portfolio Value Over Time')
-plt.legend()
-plt.show()
-plt.savefig(f"Images/ARO vs GA Regression.png")
-
+# df = pd.DataFrame(data)
+# fig, ax = plt.subplots(figsize=(12, 8))  # set size frame
 #
-# Comparison between classification and regression
-plt.figure(constrained_layout=True)
-plt.plot(regression_ARO_evaluation, label='ARO regression')
-plt.plot(classification_ARO_evaluation, label='ARO classification')
-plt.xlabel('Time in Days')
-plt.ylabel('Portfolio Value')
-plt.title('Portfolio Value Over Time Using ARO optimizer')
-plt.legend()
-plt.show()
-plt.savefig(f"Images/ARO Regression vs Classification.png")
+# # hide axes
+# ax.xaxis.set_visible(False)
+# ax.yaxis.set_visible(False)
+# ax.set_frame_on(False)
+#
+# # Create a table
+# table = ax.table(cellText=df.values, colLabels=df.columns, cellLoc='center', loc='center')
+#
+# table.auto_set_font_size(False)
+# table.set_fontsize(10)
+# table.scale(1.2, 1.2)  # scale the table
+#
+# plt.show()
+#
+# fig.savefig("table.png")
 
-
-plt.figure(constrained_layout=True)
-plt.plot(regression_GA_evaluation, label='GA regression')
-plt.plot(classification_GA_evaluation, label='GA classification')
-plt.xlabel('Time in Days')
-plt.ylabel('Portfolio Value')
-plt.title('Portfolio Value Over Time Using GA optimizer')
-plt.legend()
-plt.show()
-plt.savefig(f"Images/GA Regression vs Classification.png")
-
+# ### Regression based strategy
+# classification = False
+# regression_ARO_evaluation, regression_ARO_losses, regression_ARO_total_time, regression_ARO_times_per_stock = evaluate_optimizer("ARO", ARO_parameters, stock_data_train, stock_data_test, classification)
+# data = {
+#     'Evaluation': pd.Series(regression_ARO_evaluation),
+#     'Best Losses': pd.Series(regression_ARO_losses),
+#     'Total Time': pd.Series(regression_ARO_total_time),
+#     'Times_per_stock': pd.Series(regression_ARO_times_per_stock)
+# }
+# df = pd.DataFrame(data)
+# df.to_csv('regression_ARO_results.csv', index=False)
+#
+# regression_GA_evaluation, regression_GA_losses, regression_GA_total_time, regression_GA_times_per_stock = evaluate_optimizer("GA", GA_parameters, stock_data_train, stock_data_test, classification)
+# data = {
+#     'Evaluation': pd.Series(regression_GA_evaluation),
+#     'Best Losses': pd.Series(regression_GA_losses),
+#     'Total Time': pd.Series(regression_GA_total_time),
+#     'Times_per_stock': pd.Series(regression_GA_times_per_stock)
+# }
+# df = pd.DataFrame(data)
+# df.to_csv('regression_GA_results.csv', index=False)
+#
+# # write_results_to_file("regression_ARO_results.txt", regression_ARO_evaluation, regression_ARO_losses, regression_ARO_total_time, regression_ARO_times_per_stock)
+# # write_results_to_file("regression_GA_results.txt", regression_GA_evaluation, regression_GA_losses, regression_GA_total_time, regression_GA_times_per_stock)
+# #
+# # print(regression_ARO_evaluation)
+# # print(regression_GA_evaluation)
+# # Plot the results
+# plt.figure(constrained_layout=True)
+# plt.plot(regression_ARO_evaluation, label='ARO')
+# plt.plot(regression_GA_evaluation, label='GA')
+# plt.xlabel('Time in Days')
+# plt.ylabel('Portfolio Value')
+# plt.title('Portfolio Value Over Time')
+# plt.legend()
+# plt.show()
+# plt.savefig(f"Images/ARO vs GA Regression.png")
+#
+# #
+# # Comparison between classification and regression
+# plt.figure(constrained_layout=True)
+# plt.plot(regression_ARO_evaluation, label='ARO regression')
+# plt.plot(classification_ARO_evaluation, label='ARO classification')
+# plt.xlabel('Time in Days')
+# plt.ylabel('Portfolio Value')
+# plt.title('Portfolio Value Over Time Using ARO optimizer')
+# plt.legend()
+# plt.show()
+# plt.savefig(f"Images/ARO Regression vs Classification.png")
+#
+#
+# plt.figure(constrained_layout=True)
+# plt.plot(regression_GA_evaluation, label='GA regression')
+# plt.plot(classification_GA_evaluation, label='GA classification')
+# plt.xlabel('Time in Days')
+# plt.ylabel('Portfolio Value')
+# plt.title('Portfolio Value Over Time Using GA optimizer')
+# plt.legend()
+# plt.show()
+# plt.savefig(f"Images/GA Regression vs Classification.png")
+#
