@@ -67,7 +67,7 @@ class GA:
 
         for generation in range(self.num_generations):
             print(f"Generation {generation + 1} start")
-            fitnesses_models = [evaluate_hyperparams(ind, data, classification=classification, CV=True) for ind in population]
+            fitnesses_models = [evaluate_hyperparams(ind, data, classification=classification, CV=False) for ind in population]
             fitnesses = [(-1) * fm[0] for fm in
                          fitnesses_models]  # Extract fitness values, negate the loss so the model with the lowest loss is the most fit
             models = [fm[1] for fm in fitnesses_models]  # Extract models
