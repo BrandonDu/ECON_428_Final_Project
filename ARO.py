@@ -24,7 +24,7 @@ class ARO:
 
         for i in range(self.n_pop):
             print("Evaluating initial population")
-            pop_fit[i], model = evaluate_hyperparams(pop_pos[i, :], data, classification=classification, CV=True)
+            pop_fit[i], model = evaluate_hyperparams(pop_pos[i, :], data, classification=classification, CV=False)
             if pop_fit[i] <= best_f:
                 best_f = pop_fit[i]
                 best_x = pop_pos[i, :]
@@ -60,7 +60,7 @@ class ARO:
 
                 new_pop_pos = space_bound(new_pop_pos, self.up, self.low)
                 new_pop_pos = new_pop_pos.ravel()
-                new_pop_fit, new_model = evaluate_hyperparams(new_pop_pos, data, classification=classification, CV=True)
+                new_pop_fit, new_model = evaluate_hyperparams(new_pop_pos, data, classification=classification, CV=False)
 
                 if new_pop_fit < pop_fit[i]:
                     pop_fit[i] = new_pop_fit

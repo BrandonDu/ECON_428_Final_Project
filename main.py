@@ -18,6 +18,8 @@ def evaluate_optimizer(hyperparams_optimizer, optimizer_parameters, stock_data_t
     best_losses = []
     start_time = 0
     end_time = 0
+    total_time = 0
+    times_per_stock = []
     print(f"Initializing hyperparameters optimization for {hyperparams_optimizer}, classification = {classification}")
     for ticker, stock in stock_data_train.items():
         print(f"Training model for {ticker}")
@@ -32,6 +34,8 @@ def evaluate_optimizer(hyperparams_optimizer, optimizer_parameters, stock_data_t
             best_hyperparams, best_model, best_loss, history = train_model(stock, optimizer, classification)
             end_time = time.time()
 
+        total_time +=  end_time - start_time
+        times_per_stock.append(end_time - start_time)
         best_losses.append(best_loss) # append best loss for each stock in order
         print(f"history = {history}")
         plt.figure(constrained_layout=True)
@@ -40,7 +44,8 @@ def evaluate_optimizer(hyperparams_optimizer, optimizer_parameters, stock_data_t
         plt.xlabel('Iterations')
         plt.ylabel('Fitness')
         plt.title(f"{hyperparams_optimizer} Fitness for {ticker}")
-        plt.show()
+        # plt.show()
+        plt.savefig(f"Images/{hyperparams_optimizer} {ticker} Fitness.png")
 
         # Make predictions for the next day given a previous number of days for the entire testing data
         scaler = MinMaxScaler(feature_range=(0, 1))
@@ -125,7 +130,7 @@ def evaluate_optimizer(hyperparams_optimizer, optimizer_parameters, stock_data_t
         portfolio_backtest = {'long': {}, 'short': {}}
 
     print(f"Finished evaluating {hyperparams_optimizer} optimizer")
-    return portfolio_value_over_time, best_losses, end_time - start_time# return portfolio value, loss information, and time
+    return portfolio_value_over_time, best_losses, total_time, times_per_stock # return portfolio value, loss information, and times
 
 
 ### User Settings
@@ -134,8 +139,8 @@ np.random.seed(seed)
 random.seed(seed)
 tf.random.set_seed(seed)
 
-# stock_list = ["AAPL", "MSFT", "GOOGL", "AMZN", "SPOT"]
-stock_list = ["SPOT", 'MSFT']
+stock_list = ["AAPL", "AMZN", "DIS", "GOOGL", "JPM", "LLY", "MSFT", "NVDA", "SPOT", "XOM"]
+# stock_list = ["SPOT", 'MSFT']
 end_date = datetime.now() - timedelta(days=730)
 start_date = end_date - timedelta(days=730)
 
@@ -148,8 +153,8 @@ stock_data_test = fetch_latest_data(stock_list, start_date, end_date)
 
 # ARO parameters
 ARO_parameters = {
-    "max_iteration": 2,
-    "pop_size": 2,
+    "max_iteration": 50,
+    "pop_size": 4,
     "fun_index": 23,
 }
 
@@ -160,22 +165,25 @@ GA_parameters = {
         "learning_rate": [0.001, 0.01, 0.1],
         "dropout": [0.1, 0.2, 0.3, 0.4, 0.5],
     },
-    "pop_size": 3,
-    "num_generations": 3,
-    "num_parents": 2,
+    "pop_size": 20,
+    "num_generations": 20,
+    "num_parents": 3,
     "crossover_rate": 0.7,
     "mutation_rate": 0.1,
 }
 #
 # Classification based strategy
 classification = True
-classification_ARO_evaluation, classification_ARO_losses, classification_ARO_time = evaluate_optimizer("ARO", ARO_parameters, stock_data_train, stock_data_test, classification)
-classification_GA_evaluation, classification_GA_losses, classification_GA_time = evaluate_optimizer("GA", GA_parameters, stock_data_train, stock_data_test, classification)
+classification_ARO_evaluation, classification_ARO_losses, classification_ARO_total_time, classification_ARO_times_per_stock = evaluate_optimizer("ARO", ARO_parameters, stock_data_train, stock_data_test, classification)
+classification_GA_evaluation, classification_GA_losses, classification_GA_total_time, classification_GA_times_per_stock = evaluate_optimizer("GA", GA_parameters, stock_data_train, stock_data_test, classification)
+
+write_results_to_file("classification_ARO_results.txt", classification_ARO_evaluation, classification_ARO_losses, classification_ARO_total_time, classification_ARO_times_per_stock)
+write_results_to_file("classification_GA_results.txt", classification_GA_evaluation, classification_GA_losses, classification_GA_total_time, classification_GA_times_per_stock)
 
 print(classification_ARO_evaluation)
 print(classification_GA_evaluation)
 # Plot the results
-plt.figure()
+plt.figure(constrained_layout=True)
 plt.plot(classification_ARO_evaluation, label='ARO')
 plt.plot(classification_GA_evaluation, label='GA')
 plt.xlabel('Time in Days')
@@ -183,6 +191,8 @@ plt.ylabel('Portfolio Value')
 plt.title('Portfolio Value Over Time')
 plt.legend()
 plt.show()
+plt.savefig(f"Images/ARO vs GA Classification.png")
+
 
 # Table for the best losses for each stock and each optimizer
 data = {
@@ -212,13 +222,16 @@ fig.savefig("table.png")
 
 # Regression based strategy
 classification = False
-regression_ARO_evaluation, regression_ARO_losses, regression_ARO_time = evaluate_optimizer("ARO", ARO_parameters, stock_data_train, stock_data_test, classification)
-regression_GA_evaluation, regression_GA_losses, regression_GA_time = evaluate_optimizer("GA", GA_parameters, stock_data_train, stock_data_test, classification)
+regression_ARO_evaluation, regression_ARO_losses, regression_ARO_total_time, regression_ARO_times_per_stock = evaluate_optimizer("ARO", ARO_parameters, stock_data_train, stock_data_test, classification)
+regression_GA_evaluation, regression_GA_losses, regression_GA_total_time, regression_GA_times_per_stock = evaluate_optimizer("GA", GA_parameters, stock_data_train, stock_data_test, classification)
+
+write_results_to_file("regression_ARO_results.txt", regression_ARO_evaluation, regression_ARO_losses, regression_ARO_total_time, regression_ARO_times_per_stock)
+write_results_to_file("regression_GA_results.txt", regression_GA_evaluation, regression_GA_losses, regression_GA_total_time, regression_GA_times_per_stock)
 
 print(regression_ARO_evaluation)
 print(regression_GA_evaluation)
 # Plot the results
-plt.figure()
+plt.figure(constrained_layout=True)
 plt.plot(regression_ARO_evaluation, label='ARO')
 plt.plot(regression_GA_evaluation, label='GA')
 plt.xlabel('Time in Days')
@@ -226,9 +239,11 @@ plt.ylabel('Portfolio Value')
 plt.title('Portfolio Value Over Time')
 plt.legend()
 plt.show()
+plt.savefig(f"Images/ARO vs GA Regression.png")
+
 #
 # Comparison between classification and regression
-plt.figure()
+plt.figure(constrained_layout=True)
 plt.plot(regression_ARO_evaluation, label='ARO regression')
 plt.plot(classification_ARO_evaluation, label='ARO classification')
 plt.xlabel('Time in Days')
@@ -236,8 +251,10 @@ plt.ylabel('Portfolio Value')
 plt.title('Portfolio Value Over Time Using ARO optimizer')
 plt.legend()
 plt.show()
+plt.savefig(f"Images/ARO Regression vs Classification.png")
 
-plt.figure()
+
+plt.figure(constrained_layout=True)
 plt.plot(regression_GA_evaluation, label='GA regression')
 plt.plot(classification_GA_evaluation, label='GA classification')
 plt.xlabel('Time in Days')
@@ -245,3 +262,5 @@ plt.ylabel('Portfolio Value')
 plt.title('Portfolio Value Over Time Using GA optimizer')
 plt.legend()
 plt.show()
+plt.savefig(f"Images/GA Regression vs Classification.png")
+

@@ -319,15 +319,15 @@ def evaluate_hyperparams(hyperparams, data, epochs=25, batch_size=32, show_graph
 
 
 def visualize_data(y_test, y_pred, optimizer, stock_name="S&P500"):
-    plt.figure(figsize=(10, 6))
+    plt.figure(constrained_layout=True, figsize=(10, 6))
     plt.plot(y_test, color='blue', label=f'Actual {stock_name} Opening Price')
     plt.plot(y_pred, color='red', label=f'Predicted {stock_name} Opening Price')
     plt.title(f'{optimizer} {stock_name} Stock Price Prediction')
     plt.xlabel('Time (days)')
     plt.ylabel(f'{stock_name} Opening Price')
     plt.legend()
-    plt.show()
-    # plt.savefig()
+    # plt.show()
+    plt.savefig(f"Images/{optimizer} {stock_name}.png")
 
 
 def fetch_latest_data(tickers, start_date, end_date):
@@ -367,3 +367,25 @@ def train_model(stock, optimizer, classification):
     data = (training_data, test_data)
 
     return optimizer(data, classification=classification)
+
+def write_results_to_file(file_name, evaluation, losses, total_time, times_per_stock):
+    # Write the data to a text file
+    with open(file_name, 'w') as file:
+        file.write("classification_ARO_evaluation:\n")
+        for item in evaluation:
+            file.write(f"{item}\n")
+
+        file.write("\nclassification_ARO_losses:\n")
+        for item in losses:
+            file.write(f"{item}\n")
+
+        file.write("\nclassification_ARO_total_time:\n")
+        file.write(f"{total_time}\n")
+
+        file.write("\nclassification_ARO_times_per_stock:\n")
+        file.write(f"Average time per stock = {np.mean(times_per_stock)}\n")
+        for item in times_per_stock:
+            file.write(f"{item}\n")
+
+
+
