@@ -40,7 +40,13 @@ def evaluate_optimizer(hyperparams_optimizer, optimizer_parameters, stock_data_t
         print(f"history = {history}")
         plt.figure(constrained_layout=True)
         plt.plot(range(1, len(history) + 1), history, 'r', linewidth=2)
-        plt.yticks(np.arange(1, len(history) + 1))
+        # Set y-axis limits according to the values in history
+        padding = max(history) - min(history) * 0.1
+        plt.ylim(min(history) - padding, max(history) + padding)
+
+        # Set y-ticks with appropriate intervals
+        y_ticks = np.linspace(min(history), max(history), num=10)
+        plt.yticks(y_ticks)
         plt.xlabel('Iterations')
         plt.ylabel('Fitness')
         plt.title(f"{hyperparams_optimizer} Fitness for {ticker}")
@@ -153,7 +159,7 @@ stock_data_test = fetch_latest_data(stock_list, start_date, end_date)
 
 # ARO parameters
 ARO_parameters = {
-    "max_iteration": 50,
+    "max_iteration": 25,
     "pop_size": 4,
     "fun_index": 23,
 }
@@ -166,7 +172,7 @@ GA_parameters = {
         "dropout": [0.1, 0.2, 0.3, 0.4, 0.5],
     },
     "pop_size": 20,
-    "num_generations": 20,
+    "num_generations": 10,
     "num_parents": 3,
     "crossover_rate": 0.7,
     "mutation_rate": 0.1,
