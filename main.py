@@ -20,11 +20,12 @@ def evaluate_optimizer(hyperparams_optimizer, optimizer_parameters, stock_data_t
     end_time = 0
     total_time = 0
     times_per_stock = []
+
     print(f"Initializing hyperparameters optimization for {hyperparams_optimizer}, classification = {classification}")
     for ticker, stock in stock_data_train.items():
         print(f"Training model for {ticker}")
         if hyperparams_optimizer == "ARO":
-            optimizer = ARO(optimizer_parameters["fun_index"], optimizer_parameters["max_iteration"], optimizer_parameters["pop_size"])
+            optimizer = ARO(optimizer_parameters["bounds"], optimizer_parameters["max_iteration"], optimizer_parameters["pop_size"])
             start_time = time.time()
             best_hyperparams, best_model, best_loss, history = train_model(stock, optimizer, classification)
             end_time = time.time()
@@ -34,25 +35,19 @@ def evaluate_optimizer(hyperparams_optimizer, optimizer_parameters, stock_data_t
             best_hyperparams, best_model, best_loss, history = train_model(stock, optimizer, classification)
             end_time = time.time()
 
-        total_time +=  end_time - start_time
+        total_time += end_time - start_time
         times_per_stock.append(end_time - start_time)
         best_losses.append(best_loss) # append best loss for each stock in order
         print(f"history = {history}")
         plt.figure(constrained_layout=True)
-        plt.plot(range(1, len(history) + 1), history, 'r', linewidth=2)
-        # Set y-axis limits according to the values in history
-        padding = max(history) - min(history) * 0.1
-        plt.ylim(min(history) - padding, max(history) + padding)
-
-        # Set y-ticks with appropriate intervals
-        y_ticks = np.linspace(min(history), max(history), num=10)
-        plt.yticks(y_ticks)
+        plt.semilogy(range(1, len(history) + 1), history, 'r', linewidth=2)
         plt.xlabel('Iterations')
         plt.ylabel('Fitness')
         plt.title(f"{hyperparams_optimizer} Fitness for {ticker}")
-        # plt.show()
-        plt.savefig(f"Images/{hyperparams_optimizer} {ticker} Fitness.png")
-
+        if classification:
+            plt.savefig(f"Images/{hyperparams_optimizer} {ticker} Fitness Classification.png")
+        else:
+            plt.savefig(f"Images/{hyperparams_optimizer} {ticker} Fitness Regression.png")
         # Make predictions for the next day given a previous number of days for the entire testing data
         scaler = MinMaxScaler(feature_range=(0, 1))
         scaled_test_data = scaler.fit_transform(stock_data_test[ticker]['Open'][: -1].values.reshape(-1, 1)) # for backtesting, we reserve the last day to compare
@@ -105,7 +100,7 @@ def evaluate_optimizer(hyperparams_optimizer, optimizer_parameters, stock_data_t
             investments[ticker] = expected_change * initial_capital / curr_prices[ticker]
             investment_total += np.abs(investments[ticker]) # We may short
 
-        multiplier = 0.5 * cash / investment_total
+        multiplier = 0.8 * cash / investment_total
         for ticker, amount in investments.items():
             amount = math.floor(amount * multiplier)
             if amount > 0: # Long
@@ -146,7 +141,6 @@ random.seed(seed)
 tf.random.set_seed(seed)
 
 stock_list = ["AAPL", "AMZN", "DIS", "GOOGL", "JPM", "LLY", "MSFT", "NVDA", "SPOT", "XOM"]
-# stock_list = ["SPOT", 'MSFT']
 end_date = datetime.now() - timedelta(days=730)
 start_date = end_date - timedelta(days=730)
 
@@ -159,9 +153,11 @@ stock_data_test = fetch_latest_data(stock_list, start_date, end_date)
 
 # ARO parameters
 ARO_parameters = {
-    "max_iteration": 25,
+    "max_iteration": 10,
     "pop_size": 4,
-    "fun_index": 23,
+    "bounds": [(10, 100),  # LSTM units
+              (0.1, 0.5),  # Dropout rate
+              (0.001, 0.01)]  # Learning rate (assuming optimizer uses it)
 }
 
 # GA parameters
@@ -171,7 +167,7 @@ GA_parameters = {
         "learning_rate": [0.001, 0.01, 0.1],
         "dropout": [0.1, 0.2, 0.3, 0.4, 0.5],
     },
-    "pop_size": 20,
+    "pop_size": 10,
     "num_generations": 10,
     "num_parents": 3,
     "crossover_rate": 0.7,

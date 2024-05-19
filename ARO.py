@@ -1,14 +1,14 @@
 import numpy as np
 
-from utils import fun_range, space_bound, evaluate_hyperparams
+from utils import space_bound, evaluate_hyperparams
 
 
 class ARO:
-    def __init__(self, f_index, max_it, n_pop):
-        self.f_index = f_index
+    def __init__(self, bounds, max_it, n_pop):
         self.max_it = max_it
         self.n_pop = n_pop
-        self.low, self.up, self.dim = fun_range(f_index)
+        self.low, self.up = np.array([b[0] for b in bounds]), np.array([b[1] for b in bounds])
+        self.dim = len(bounds)
 
     def __call__(self, data, *args, **kwargs):
         print("Initiating ARO Optimizer")
@@ -24,7 +24,7 @@ class ARO:
 
         for i in range(self.n_pop):
             print("Evaluating initial population")
-            pop_fit[i], model = evaluate_hyperparams(pop_pos[i, :], data, classification=classification, CV=False)
+            pop_fit[i], model = evaluate_hyperparams(pop_pos[i, :], data, classification=classification, CV=True)
             if pop_fit[i] <= best_f:
                 best_f = pop_fit[i]
                 best_x = pop_pos[i, :]
@@ -60,7 +60,7 @@ class ARO:
 
                 new_pop_pos = space_bound(new_pop_pos, self.up, self.low)
                 new_pop_pos = new_pop_pos.ravel()
-                new_pop_fit, new_model = evaluate_hyperparams(new_pop_pos, data, classification=classification, CV=False)
+                new_pop_fit, new_model = evaluate_hyperparams(new_pop_pos, data, classification=classification, CV=True)
 
                 if new_pop_fit < pop_fit[i]:
                     pop_fit[i] = new_pop_fit

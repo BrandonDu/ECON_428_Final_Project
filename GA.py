@@ -1,9 +1,6 @@
 import random
-import keras
-from tensorflow.keras.layers import LSTM, Dense, Dropout, Input
-from utils import *
-from line_profiler import LineProfiler
-
+import numpy as np
+from utils import evaluate_hyperparams
 
 class GA:
     def __init__(self, hyperparameter_space, pop_size, num_generations, num_parents, crossover_rate, mutation_rate):
