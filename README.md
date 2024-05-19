@@ -59,3 +59,33 @@ data = (training_data, test_data)
 
 loss, model = evaluate_hyperparams(hyperparams, data, epochs=10, batch_size=20, classification=True, CV=False)
 ```
+
+### Trading Strategy
+The trading strategy we implement is simple. We perform a trading strategy where we hold stocks for exactly one day, and each day we invest exactly $5000 (including shorts as positive investment). Under regression models, we predict the percent increase for each stock and invest money proportionate to the predicted percent change for each stock. For example, if stock A is predicted to increase by 10% and stock B is predicted to increase by 90%, the algorithm buys $500 worth of stock A and $4500 worth of stock B.
+
+
+### Evaluating Optimizer
+To evaluate the optimizer, we provide the **evaluate_optimizer** function. The function takes in the optimizer type as a string ("ARO" or "GA"), the parameters for the optimizer as a dictionary, the training and testing data, and a flag for whether it is classification. The function returns the portfolio value based on the trading strategy described, loss information, total time it took to train the model, and time it took to train the model per stock.
+
+```python
+train_end_date = datetime.now() - timedelta(days=730)
+train_start_date = end_date - timedelta(days=730)
+stock_data_train = fetch_latest_data(stock_list, train_start_date, train_end_date)
+
+test_end_date = datetime.now()
+test_test_date = end_date - timedelta(days=365)
+stock_data_test = fetch_latest_data(stock_list, test_test_date, test_end_date)
+
+
+classification_GA_evaluation, classification_GA_losses, classification_GA_total_time, classification_GA_times_per_stock = evaluate_optimizer("GA", GA_parameters, stock_data_train, stock_data_test, False)
+```
+
+### Utilities
+Some helpful utility functions may be found in the utils.py module. Of note are the following:
+
+**create_sequences** takes in data and creates an array of sliding window of specified length. 
+
+**fetch_latest_data** takes in ticker name for a stock and downloads the data from Yahoo Finance between a given start and end date.
+
+**visualize_data** takes in prediction and actual price for a stock and creates a pyplot
+
