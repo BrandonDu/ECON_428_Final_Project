@@ -3,7 +3,7 @@
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. For our implementation, we consider optimizing a 2-layer LSTM to predict stock prices
 of two types: regression and classification. The regression model predicts the expected price of the next day given the past days, and the classification
 classifies the percent change in stock from the current day, with categories being 8 partitions of [-0.1, 0.1] into 8 equally sized intervals of width 0.025. The hyperparameters that we wish to optimize are the number
-of units in each layer of the LSTM, the dropout rate, and the learning rate.
+of units in each layer of the LSTM, the dropout rate, and the learning rate. 
 
 ## Initializing a Model
 First, we create an instance of an ARO. The ARO class takes in bounds on the hyperparameters it wishes to tune, the maximum number of iterations, and the population size.
@@ -65,7 +65,7 @@ The trading strategy we implement is simple. We perform a trading strategy where
 
 
 ### Evaluating Optimizer
-To evaluate the optimizer, we provide the **evaluate_optimizer** function. The function takes in the optimizer type as a string ("ARO" or "GA"), the parameters for the optimizer as a dictionary, the training and testing data, and a flag for whether it is classification. The function returns the portfolio value based on the trading strategy described, loss information, total time it took to train the model, and time it took to train the model per stock.
+To evaluate the optimizer, we provide the **evaluate_optimizer** function. The function takes in the optimizer type as a string ("ARO" or "GA"), the parameters for the optimizer as a dictionary, the training and testing data, and a flag for whether it is classification. The function returns the portfolio value based on the trading strategy described, loss information, total time it took to train the model, and time it took to train the model per stock. The user should create an Images folder in the repository to save plots given by this function.
 
 ```python
 train_end_date = datetime.now() - timedelta(days=730)
