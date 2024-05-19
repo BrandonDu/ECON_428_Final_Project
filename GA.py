@@ -2,6 +2,8 @@ import random
 import numpy as np
 from utils import evaluate_hyperparams
 
+
+# Class for Genetic Algorithm optimizer
 class GA:
     def __init__(self, hyperparameter_space, pop_size, num_generations, num_parents, crossover_rate, mutation_rate):
         self.hyperparameter_space = hyperparameter_space
@@ -11,13 +13,16 @@ class GA:
         self.crossover_rate = crossover_rate
         self.mutation_rate = mutation_rate
 
+    # Initialize the population with random individuals
     def initialize_population(self):
         population = []
         for _ in range(self.pop_size):
+            # Randomly choose hyperparameters for each individual
             individual = {key: random.choice(values) for key, values in self.hyperparameter_space.items()}
             population.append(individual)
         return population
 
+    # Select parents for crossover based on their fitness
     def selection(self, population, fitnesses):
         # Ensure all fitness scores are positive by shifting them
         min_fitness = min(fitnesses)
