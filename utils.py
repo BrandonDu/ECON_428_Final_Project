@@ -6,7 +6,9 @@ import numpy as np
 from tensorflow.keras.layers import LSTM, Dense, Dropout, Input
 from tensorflow.keras.utils import to_categorical
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, TimeSeriesSplit
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+
 
 def fun_range(fun_index):
     dim = 30
@@ -194,14 +196,15 @@ def ben_functions(X, FunIndex, Dim):
 def label_buckets(change):
     return math.floor(max(min(change, 0.09999), -0.1) / 0.025) + 4
 
+
 def create_sequences(data, sequence_length, labels=None):
     xs, ys = [], []
     for i in range(len(data) - sequence_length):
         x = data[i:(i + sequence_length)]
         if labels is None:
-            y = data[i + sequence_length] # Regression
+            y = data[i + sequence_length]  # Regression
         else:
-            y = labels.iloc[i + sequence_length] # Classification
+            y = labels.iloc[i + sequence_length]  # Classification
         xs.append(x)
         ys.append(y)
     return np.array(xs), np.array(ys)
@@ -219,67 +222,113 @@ def mean_squared_error(actual, predicted):
     return mean_squared_error
 
 
-def evaluate_hyperparams(hyperparams, data, epochs=25, batch_size=32, show_graph=False, classification=False):
+def evaluate_hyperparams(hyperparams, data, epochs=25, batch_size=32, show_graph=False, classification=False, CV=False):
     if isinstance(hyperparams, dict):
-        n_units, dropout_rate, learning_rate = hyperparams["units"], hyperparams["dropout"], hyperparams["learning_rate"]
-    else: n_units, dropout_rate, learning_rate = int(hyperparams[0]), hyperparams[1], hyperparams[2]
+        n_units, dropout_rate, learning_rate = hyperparams["units"], hyperparams["dropout"], hyperparams[
+            "learning_rate"]
+    else:
+        n_units, dropout_rate, learning_rate = int(hyperparams[0]), hyperparams[1], hyperparams[2]
     num_classes = 1
+
     x_train, y_train = data[0]
     x_test, y_test = data[1]
     if classification:
-        # print("classification = True")
         y_train = y_train.flatten()
-        # print(f"y_train.shape = {y_train.shape}")
         y_test = y_test.flatten()
-        y_train = to_categorical(y_train) # make into one-hot vectors
-        y_test = to_categorical(y_test)
+        y_train = to_categorical(y_train, num_classes=8)
+        y_test = to_categorical(y_test, num_classes=8)
         num_classes = y_train.shape[1]
 
+    if not CV:
+        model = keras.Sequential([
+            Input(shape=(x_train.shape[1], 1)),
+            LSTM(units=n_units, return_sequences=True),
+            Dropout(dropout_rate),
+            LSTM(units=n_units, return_sequences=False),
+            Dropout(dropout_rate),
+        ])
 
-    model = keras.Sequential([
-        Input(shape=(x_train.shape[1], 1)),
-        LSTM(units=n_units, return_sequences=True),
-        Dropout(dropout_rate),
-        LSTM(units=n_units, return_sequences=False),
-        Dropout(dropout_rate),
-        # Dense(units=1) # Regression
-        # Dense(units=num_classes, activation="softmax") # Classification
-    ])
+        if classification:
+            model.add(Dense(units=num_classes, activation='softmax'))
+            loss = 'categorical_crossentropy'
+            metrics = ['accuracy']
+        else:
+            model.add(Dense(units=1))
+            loss = 'mean_squared_error'
+            metrics = ['mse']
 
-    if classification:
-        model.add(Dense(units=num_classes, activation='softmax'))
-        loss = 'categorical_crossentropy'
-        metrics = ['accuracy']
-    else:
-        model.add(Dense(units=1))
-        loss = 'mean_squared_error'
-        metrics = ['mse']
+        optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
 
-    optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
+        model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
-    model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+        model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size)  # Classification
 
-    model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size) # Classification
+        y_pred = model.predict(x_test)
+        if classification:
+            loss, accuracy = model.evaluate(x_test, y_test)
+        else:
+            # mse = mean_squared_error(y_test, y_pred)  # Regression
+            loss, mse = model.evaluate(x_test, y_test)
 
-    y_pred = model.predict(x_test)
-    if classification: loss, accuracy = model.evaluate(x_test, y_test)
-    else: mse = mean_squared_error(y_test, y_pred) # Regression
+        return loss, model
 
-    if show_graph:
-        visualize_data(y_test, y_pred)
-    if classification: return loss, model
-    return mse, model
+    else: # Doing CV
+        X = np.concatenate((x_train, x_test), axis=0) # Re-concatenate train and test data to be split by CV
+        y = np.concatenate((y_train, y_test), axis=0)
+        tscv = TimeSeriesSplit(n_splits=5)
+        best_model = None
+        best_loss = float("inf")
+        for fold, (train_index, test_index) in enumerate(tscv.split(X)):
+            print(f"CV fold {fold}")
+            x_train, x_test = X[train_index], X[test_index]
+            y_train, y_test = y[train_index], y[test_index]
+
+            # Create and train the LSTM model
+            model = keras.Sequential([
+                Input(shape=(x_train.shape[1], 1)),
+                LSTM(units=n_units, return_sequences=True),
+                Dropout(dropout_rate),
+                LSTM(units=n_units, return_sequences=False),
+                Dropout(dropout_rate),
+            ])
+
+            if classification:
+                model.add(Dense(units=num_classes, activation='softmax'))
+                loss = 'categorical_crossentropy'
+                metrics = ['accuracy']
+            else:
+                model.add(Dense(units=1))
+                loss = 'mean_squared_error'
+                metrics = ['mse']
+
+            optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
+            model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+            early_stopping = EarlyStopping(monitor='loss', patience=5, restore_best_weights=True)
+            model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, callbacks=[early_stopping])  # Classification
+            # model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size)
+            # y_pred = model.predict(x_test)
+            loss, accuracy = model.evaluate(x_test, y_test)
+
+            # Keep track of the best model
+            if loss < best_loss:
+                best_loss = loss
+                best_model = model
+
+        print("Finished evaluating hyperparameters, returning best loss and model")
+        return best_loss, best_model
 
 
-def visualize_data(y_test, y_pred, stock_name="S&P500"):
+def visualize_data(y_test, y_pred, optimizer, stock_name="S&P500"):
     plt.figure(figsize=(10, 6))
     plt.plot(y_test, color='blue', label=f'Actual {stock_name} Opening Price')
     plt.plot(y_pred, color='red', label=f'Predicted {stock_name} Opening Price')
-    plt.title(f'{stock_name} Stock Price Prediction')
+    plt.title(f'{optimizer} {stock_name} Stock Price Prediction')
     plt.xlabel('Time (days)')
     plt.ylabel(f'{stock_name} Opening Price')
     plt.legend()
     plt.show()
+    # plt.savefig()
+
 
 def fetch_latest_data(tickers, start_date, end_date):
     stock_data = {}
@@ -292,6 +341,7 @@ def fetch_latest_data(tickers, start_date, end_date):
     print("Stock data fetched.")
     return stock_data
 
+
 def train_model(stock, optimizer, classification):
     scaler = MinMaxScaler(feature_range=(0, 1))
 
@@ -303,7 +353,7 @@ def train_model(stock, optimizer, classification):
         labels = None
         scaled_data = scaler.fit_transform(stock["Open"].values.reshape(-1, 1))
 
-    sequence_length = 60
+    sequence_length = 20
     X, y = create_sequences(scaled_data, sequence_length, labels=labels)
     X = X.reshape((X.shape[0], X.shape[1], 1))
     # print(X.shape)
