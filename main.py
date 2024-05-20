@@ -175,7 +175,7 @@ GA_parameters = {
     "mutation_rate": 0.1,
 }
 
-# Classification based strategy
+### Classification based strategy
 classification = True
 classification_ARO_evaluation, classification_ARO_losses, classification_ARO_total_time, classification_ARO_times_per_stock = evaluate_optimizer("ARO", ARO_parameters, stock_data_train, stock_data_test, classification)
 write_results_to_file("classification_ARO_results.txt", classification_ARO_evaluation, classification_ARO_losses, classification_ARO_total_time, classification_ARO_times_per_stock)
@@ -200,8 +200,6 @@ data = {
 df = pd.DataFrame(data)
 df.to_csv('classification_GA_results.csv', index=False)
 
-# print(classification_ARO_evaluation)
-# print(classification_GA_evaluation)
 # Plot the classification results
 plt.figure(constrained_layout=True)
 plt.plot(classification_ARO_evaluation, label='ARO')
@@ -212,35 +210,6 @@ plt.title('Portfolio Value Over Time')
 plt.legend()
 plt.show()
 plt.savefig(f"Images/ARO vs GA Classification.png")
-
-
-
-
-# Table for the best losses for each stock and each optimizer
-data = {
-    "Ticker": stock_list,
-    "LSTM-ARO": classification_ARO_losses,
-    "LSTM-GA": classification_GA_losses,
-}
-
-df = pd.DataFrame(data)
-fig, ax = plt.subplots(figsize=(12, 8))  # set size frame
-
-# hide axes
-ax.xaxis.set_visible(False)
-ax.yaxis.set_visible(False)
-ax.set_frame_on(False)
-
-# Create a table
-table = ax.table(cellText=df.values, colLabels=df.columns, cellLoc='center', loc='center')
-
-table.auto_set_font_size(False)
-table.set_fontsize(10)
-table.scale(1.2, 1.2)  # scale the table
-
-plt.show()
-
-fig.savefig("table.png")
 
 ### Regression based strategy
 classification = False
@@ -264,10 +233,6 @@ data = {
 df = pd.DataFrame(data)
 df.to_csv('regression_GA_results.csv', index=False)
 
-# write_results_to_file("regression_ARO_results.txt", regression_ARO_evaluation, regression_ARO_losses, regression_ARO_total_time, regression_ARO_times_per_stock)
-# write_results_to_file("regression_GA_results.txt", regression_GA_evaluation, regression_GA_losses, regression_GA_total_time, regression_GA_times_per_stock)
-
-
 # Plot the regression results
 plt.figure(constrained_layout=True)
 plt.plot(regression_ARO_evaluation, label='ARO')
@@ -289,7 +254,6 @@ plt.title('Portfolio Value Over Time Using ARO optimizer')
 plt.legend()
 plt.show()
 plt.savefig(f"Images/ARO Regression vs Classification.png")
-
 
 plt.figure(constrained_layout=True)
 plt.plot(regression_GA_evaluation, label='GA regression')
