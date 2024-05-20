@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-
+from tensorflow.keras import backend as K
 from ARO import ARO
 from GA import *
 import tensorflow as tf
@@ -34,6 +34,8 @@ def evaluate_optimizer(hyperparams_optimizer, optimizer_parameters, stock_data_t
         total_time += end_time - start_time
         times_per_stock.append(end_time - start_time)
         best_losses.append(best_loss) # append best loss for each stock in order
+
+        # Save fitness over generations graph
         print(f"history = {history}")
         plt.figure(constrained_layout=True)
         plt.semilogy(range(1, len(history) + 1), history, 'r', linewidth=2)
@@ -41,16 +43,9 @@ def evaluate_optimizer(hyperparams_optimizer, optimizer_parameters, stock_data_t
         plt.ylabel('Fitness')
         plt.title(f"{hyperparams_optimizer} Fitness for {ticker}")
         if classification:
-            plt.savefig(f"Images/{hyperparams_optimizer} {ticker} Fitness Classification.png")
+            plt.savefig(f"Images/{hyperparams_optimizer} {ticker} Fitness Classification 5.png")
         else:
-            plt.savefig(f"Images/{hyperparams_optimizer} {ticker} Fitness Regression.png")
-
-        df = pd.DataFrame(history, columns=[f'Fitness'])
-        if classification:
-            df.to_csv(f'{hyperparams_optimizer}_{ticker}_Fitness_Classification.csv')
-        else:
-            df.to_csv(f'{hyperparams_optimizer}_{ticker}_Fitness_Regression.csv')
-
+            plt.savefig(f"Images/{hyperparams_optimizer} {ticker} Fitness Regression 5.png")
 
         # Make predictions for the next day given a previous number of days for the entire testing data
         scaler = MinMaxScaler(feature_range=(0, 1))
@@ -74,11 +69,11 @@ def evaluate_optimizer(hyperparams_optimizer, optimizer_parameters, stock_data_t
             predictions[ticker] = predictions_inversed.ravel() # append the inversed predictions to the dictionary
             visualize_data(actual[ticker], predictions_inversed, hyperparams_optimizer, stock_name=ticker)
         num_backtest_days = len(stock_data_test[ticker]["Open"])
+        K.clear_session() # Clear all the models generated from evaluating the optimizer to save memory
 
 
     # Backtesting
-    # Trading strategy is high frequency, sell immediately after the Open of the predicted day, as we only predict the Open price of the next day
-
+    # Trading strategy is medium frequency, sell immediately after the Open of the predicted day, as we only predict the Open price of the next day
     initial_capital = 10000
     portfolio_backtest = {'long': {}, 'short': {}}
     cash = initial_capital
@@ -159,8 +154,8 @@ stock_data_test = fetch_latest_data(stock_list, start_date, end_date)
 
 # ARO parameters
 ARO_parameters = {
-    "max_iteration": 10,
-    "pop_size": 4,
+    "max_iteration": 5,
+    "pop_size": 3,
     "bounds": [(10, 100),  # LSTM units
               (0.1, 0.5),  # Dropout rate
               (0.001, 0.01)]  # Learning rate (assuming optimizer uses it)
@@ -173,8 +168,8 @@ GA_parameters = {
         "learning_rate": [0.001, 0.01, 0.1],
         "dropout": [0.1, 0.2, 0.3, 0.4, 0.5],
     },
-    "pop_size": 10,
-    "num_generations": 10,
+    "pop_size": 5,
+    "num_generations": 5,
     "num_parents": 3,
     "crossover_rate": 0.7,
     "mutation_rate": 0.1,
@@ -207,7 +202,7 @@ df.to_csv('classification_GA_results.csv', index=False)
 
 # print(classification_ARO_evaluation)
 # print(classification_GA_evaluation)
-# Plot the results
+# Plot the classification results
 plt.figure(constrained_layout=True)
 plt.plot(classification_ARO_evaluation, label='ARO')
 plt.plot(classification_GA_evaluation, label='GA')
@@ -271,10 +266,9 @@ df.to_csv('regression_GA_results.csv', index=False)
 
 # write_results_to_file("regression_ARO_results.txt", regression_ARO_evaluation, regression_ARO_losses, regression_ARO_total_time, regression_ARO_times_per_stock)
 # write_results_to_file("regression_GA_results.txt", regression_GA_evaluation, regression_GA_losses, regression_GA_total_time, regression_GA_times_per_stock)
-#
-# print(regression_ARO_evaluation)
-# print(regression_GA_evaluation)
-# Plot the results
+
+
+# Plot the regression results
 plt.figure(constrained_layout=True)
 plt.plot(regression_ARO_evaluation, label='ARO')
 plt.plot(regression_GA_evaluation, label='GA')
@@ -285,7 +279,6 @@ plt.legend()
 plt.show()
 plt.savefig(f"Images/ARO vs GA Regression.png")
 
-#
 # Comparison between classification and regression
 plt.figure(constrained_layout=True)
 plt.plot(regression_ARO_evaluation, label='ARO regression')
@@ -307,4 +300,6 @@ plt.title('Portfolio Value Over Time Using GA optimizer')
 plt.legend()
 plt.show()
 plt.savefig(f"Images/GA Regression vs Classification.png")
+
+
 

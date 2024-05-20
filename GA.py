@@ -31,6 +31,7 @@ class GA:
         parents = random.choices(population, weights=fitnesses, k=self.num_parents)
         return parents
 
+    # Perform crossover to generate offspring
     def crossover(self, parents):
         offspring = []
         for i in range(0, len(parents), 2):
@@ -52,16 +53,19 @@ class GA:
                 offspring.extend([parents[i], parents[i + 1] if i + 1 < len(parents) else parents[i]])
         return offspring
 
+    # Mutate an individual's hyperparameters with a given probability
     def mutation(self, individual):
         for key in individual.keys():
             if random.random() < self.mutation_rate:
                 individual[key] = random.choice(self.hyperparameter_space[key])
         return individual
 
+    # Replace the old population with the new offspring
     def replacement(self, population, offspring):
         population[:] = offspring
         return population
 
+    # Main function to run the Genetic Algorithm
     def __call__(self, data, *args, **kwargs):
         population = self.initialize_population()
         classification = kwargs.get('classification', False)  # Default to False if not provided
@@ -72,6 +76,7 @@ class GA:
 
         for generation in range(self.num_generations):
             print(f"Generation {generation + 1} start")
+            # Evaluate the fitness of each individual in the population
             fitnesses_models = [evaluate_hyperparams(ind, data, classification=classification, CV=True) for ind in population]
             fitnesses = [(-1) * fm[0] for fm in
                          fitnesses_models]  # Extract fitness values, negate the loss so the model with the lowest loss is the most fit
@@ -80,17 +85,18 @@ class GA:
             best_gen_individual = population[fitnesses.index(best_gen_fitness)]
             best_gen_model = models[fitnesses.index(best_gen_fitness)]
 
-            if best_gen_fitness > best_fitness:
+            if best_gen_fitness > best_fitness: # Update the best individual and fitness if the current generation is better
                 best_fitness = best_gen_fitness
                 best_individual = best_gen_individual
                 best_model = best_gen_model
                 print(f"Best individual fitness = {-best_gen_fitness}")
 
-            parents = self.selection(population, fitnesses)
-            offspring = self.crossover(parents)
+            parents = self.selection(population, fitnesses) # Select parents for the next generation
+            offspring = self.crossover(parents) # Generate offspring through crossover and mutation
             offspring = [self.mutation(child) for child in offspring]
             population = self.replacement(population, offspring)
-            his_best_f[generation] = -best_fitness
+            his_best_f[generation] = -best_fitness # Record the best fitness in the current generation
             print(f'Generation {generation + 1}: Best Fitness = {-best_fitness}')
 
-        return best_individual, best_model, -best_fitness, his_best_f
+        return best_individual, best_model, -best_fitness, his_best_f # Return the best individual, the best model, the best fitness, and the history of best fitness values
+
